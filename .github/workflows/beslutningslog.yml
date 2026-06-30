@@ -3,6 +3,11 @@ on:
   issues:
     types: [closed]
 
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
 jobs:
   beslutning:
     runs-on: ubuntu-latest
@@ -17,13 +22,15 @@ jobs:
 
       - name: Tjek om issue har Beslutning-label
         id: check-label
+        env:
+          LABELS_JSON: ${{ toJSON(github.event.issue.labels) }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          LABELS='${{ toJSON(github.event.issue.labels) }}'
-          if echo "$LABELS" | grep -q '"Beslutning"'; then
+          if echo "$LABELS_JSON" | grep -q '"Beslutning"'; then
             echo "has_label=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_label=false" >> "$GITHUB_OUTPUT"
-            echo "Issue #${{ github.event.issue.number }} har ikke Beslutning-label — afslutter"
+            echo "Issue #${ISSUE_NUMBER} har ikke Beslutning-label — afslutter"
           fi
 
       - uses: actions/checkout@v4
@@ -31,35 +38,38 @@ jobs:
 
       - name: Generate decision log entry
         if: steps.check-label.outputs.has_label == 'true'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+          ISSUE_CLOSED_AT: ${{ github.event.issue.closed_at }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
         run: |
           podman run --rm \
             -v "$(pwd):/repo:z" \
-            -e ISSUE_NUMBER="${{ github.event.issue.number }}" \
-            -e ISSUE_TITLE="${{ github.event.issue.title }}" \
-            -e ISSUE_BODY="${{ github.event.issue.body }}" \
-            -e ISSUE_LABELS="${{ join(github.event.issue.labels.*.name, ', ') }}" \
-            -e ISSUE_CLOSED_AT="${{ github.event.issue.closed_at }}" \
-            -e ISSUE_URL="${{ github.event.issue.html_url }}" \
+            --env ISSUE_NUMBER \
+            --env ISSUE_TITLE \
+            --env ISSUE_BODY \
+            --env ISSUE_LABELS \
+            --env ISSUE_CLOSED_AT \
+            --env ISSUE_URL \
             -e OUTPUT_LOG="DECISION_LOG.md" \
             codeberg.org/os2-sandbox/automatiseret-beslutningslog:latest
 
       - name: Create pull request
         if: steps.check-label.outputs.has_label == 'true'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          BRANCH="beslutning/${{ github.event.issue.number }}"
+          BRANCH="beslutning/${ISSUE_NUMBER}"
           git config user.name "beslutningslog"
           git config user.email "beslutningslog@os2fri.dk"
           git checkout -b "$BRANCH"
           git add DECISION_LOG.md
-          git commit -m "BDR-#${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+          git commit -m "BDR-${ISSUE_NUMBER}: ${ISSUE_TITLE}"
           git push origin "$BRANCH"
-          curl -s -X POST "${{ github.api_url }}/repos/${{ github.repository }}/pulls" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "title": "BDR-#${{ github.event.issue.number }}: ${{ github.event.issue.title }}",
-              "head": "'"$BRANCH"'",
-              "base": "'"${GITHUB_BASE_REF:-main}"'",
-              "body": "Tilføjer beslutning #${{ github.event.issue.number }} til beslutningsloggen.",
-              "labels": ["Beslutning"]
-            }'
+          gh pr create \
+            --title "BDR-${ISSUE_NUMBER}: ${ISSUE_TITLE}" \
+            --body "Tilføjer beslutning #${ISSUE_NUMBER} til beslutningsloggen."
