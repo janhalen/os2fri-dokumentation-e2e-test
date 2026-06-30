@@ -5,12 +5,32 @@ on:
 
 jobs:
   beslutning:
-    if: contains(github.event.issue.labels.*.name, 'Beslutning')
     runs-on: ubuntu-latest
     steps:
+      - name: Sikr at Beslutning-label findes i repoet
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/labels" \
+            -d '{"name":"Beslutning","color":"0e8a16"}' || true
+
+      - name: Tjek om issue har Beslutning-label
+        id: check-label
+        run: |
+          LABELS='${{ toJSON(github.event.issue.labels) }}'
+          if echo "$LABELS" | grep -q '"Beslutning"'; then
+            echo "has_label=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_label=false" >> "$GITHUB_OUTPUT"
+            echo "Issue #${{ github.event.issue.number }} har ikke Beslutning-label — afslutter"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.check-label.outputs.has_label == 'true'
 
       - name: Generate decision log entry
+        if: steps.check-label.outputs.has_label == 'true'
         run: |
           podman run --rm \
             -v "$(pwd):/repo:z" \
@@ -24,6 +44,7 @@ jobs:
             codeberg.org/os2-sandbox/automatiseret-beslutningslog:latest
 
       - name: Create pull request
+        if: steps.check-label.outputs.has_label == 'true'
         run: |
           BRANCH="beslutning/${{ github.event.issue.number }}"
           git config user.name "beslutningslog"
