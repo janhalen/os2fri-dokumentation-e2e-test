@@ -23,6 +23,7 @@ test_entry() {
     -e ISSUE_LABELS="$issue_labels" \
     -e ISSUE_CLOSED_AT="$issue_closed_at" \
     -e "ISSUE_BODY=$(cat "$body_file")" \
+    -e ISSUE_URL="https://example.org/issues/$issue_number" \
     -e OUTPUT_LOG="/repo/$tmp_out" \
     "$IMAGE" 2>/dev/null; then
     echo "FAIL: $name (exit code non-zero)"
@@ -56,8 +57,8 @@ echo ""
 test_entry \
   "basic entry" \
   "42" \
-  "Ny governance-model for produkter" \
-  "Beslutning, governance" \
+  "Test: Simuleret beslutning om grønne markører" \
+  "Beslutning, test" \
   "2026-06-30T12:00:00Z" \
   "tests/fixtures/42-body.md" \
   "tests/expected/42-entry.md"

@@ -6,6 +6,7 @@ interface EnvVars {
   ISSUE_BODY: string
   ISSUE_LABELS: string
   ISSUE_CLOSED_AT: string
+  ISSUE_URL?: string
   OUTPUT_LOG?: string
 }
 
@@ -25,6 +26,7 @@ function getEnv(): EnvVars {
     ISSUE_BODY: process.env.ISSUE_BODY!,
     ISSUE_LABELS: process.env.ISSUE_LABELS!,
     ISSUE_CLOSED_AT: process.env.ISSUE_CLOSED_AT!,
+    ISSUE_URL: process.env.ISSUE_URL,
     OUTPUT_LOG: process.env.OUTPUT_LOG || 'DECISION_LOG.md',
   }
 }
@@ -47,16 +49,20 @@ function formatDate(iso: string): string {
 }
 
 function buildEntry(vars: EnvVars): string {
+  const decisionMakers = parseSection(vars.ISSUE_BODY, 'Beslutningstagere')
   const context = parseSection(vars.ISSUE_BODY, 'Kontekst')
   const decision = parseSection(vars.ISSUE_BODY, 'Beslutning')
   const consequences = parseSection(vars.ISSUE_BODY, 'Konsekvenser')
   const labels = extractLabels(vars.ISSUE_LABELS).filter(l => l !== 'Beslutning')
   const date = formatDate(vars.ISSUE_CLOSED_AT)
   const category = labels.length > 0 ? labels.join(', ') : 'generel'
-  const issueUrl = `https://github.com/OS2sandbox/os2fri-dokumentation/issues/${vars.ISSUE_NUMBER}`
+  const issueRef = vars.ISSUE_URL
+    ? `[#${vars.ISSUE_NUMBER}](${vars.ISSUE_URL})`
+    : `#${vars.ISSUE_NUMBER}`
+  const decisionMakersMeta = decisionMakers ? `**Beslutningstagere:** ${decisionMakers} | ` : ''
 
   return `## BDR-#${vars.ISSUE_NUMBER}: ${vars.ISSUE_TITLE} (${date})
-**Kategori:** ${category} | **Sag:** [#${vars.ISSUE_NUMBER}](${issueUrl})
+${decisionMakersMeta}**Kategori:** ${category} | **Sag:** ${issueRef}
 
 ### Kontekst
 ${context || '*Ingen kontekst angivet.*'}
@@ -69,14 +75,21 @@ ${consequences || '*Ingen konsekvenser angivet.*'}
 `
 }
 
+const LOG_HEADER = [
+  '# Beslutningslog',
+  '',
+  'Denne log indeholder **accepterede** beslutninger for OS2fri-projektet.',
+  'Hver entry stammer fra et issue med label `Beslutning` der er lukket som løst og efterfølgende godkendt via en pull request.',
+  '',
+].join('\n')
+
 function prependEntry(content: string, entry: string): string {
-  const headerMatch = content.match(/^# .+\n/)
-  if (!headerMatch) {
-    return `# Beslutningslog\n\n${entry}`
+  const firstEntryMatch = content.match(/^## BDR-#/m)
+  if (firstEntryMatch) {
+    const insertAt = firstEntryMatch.index!
+    return content.slice(0, insertAt) + entry + '\n' + content.slice(insertAt)
   }
-  const header = headerMatch[0]
-  const rest = content.slice(header.length)
-  return header + '\n' + entry + rest.trimStart()
+  return content.trimEnd() + '\n\n' + entry
 }
 
 function isDuplicate(content: string, issueNumber: string): boolean {
@@ -93,7 +106,7 @@ async function main() {
   try {
     content = fs.readFileSync(logPath, 'utf-8')
   } catch {
-    content = '# Beslutningslog\n'
+    content = LOG_HEADER
   }
 
   if (isDuplicate(content, vars.ISSUE_NUMBER)) {

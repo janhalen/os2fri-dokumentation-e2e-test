@@ -4,6 +4,9 @@ about: Registrér en beslutning til beslutningsloggen
 labels: Beslutning
 ---
 
+## Beslutningstagere
+<!-- Hvem traf beslutningen? (navn, rolle eller organ) -->
+
 ## Kontekst
 <!-- Beskriv baggrunden for beslutningen -->
 

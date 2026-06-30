@@ -19,6 +19,7 @@ jobs:
             -e ISSUE_BODY="${{ github.event.issue.body }}" \
             -e ISSUE_LABELS="${{ join(github.event.issue.labels.*.name, ', ') }}" \
             -e ISSUE_CLOSED_AT="${{ github.event.issue.closed_at }}" \
+            -e ISSUE_URL="${{ github.event.issue.html_url }}" \
             -e OUTPUT_LOG="DECISION_LOG.md" \
             ghcr.io/jankjerbye_os2/beslutningslog:latest
 

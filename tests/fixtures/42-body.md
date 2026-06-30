@@ -1,8 +1,11 @@
+## Beslutningstagere
+Mock Beslutningstager, Testrolle
+
 ## Kontekst
-OS2 har i dag ingen formel governance-model for hvordan nye produkter optages i porteføljen.
+Dette er en test-beslutning uden relation til virkelige forhold.
 
 ## Beslutning
-Der indføres en trinbaseret model: Idé → Projekt → Produkt, med fastsatte kriterier for hvert skridt.
+Test beslutter at anvende grønne markører til simulerede formål.
 
 ## Konsekvenser
-Alle nye initiativer skal igennem samme proces. Eksisterende produkter overgår gradvist.
+Ingen — dette er udelukkende en test.
