@@ -24,7 +24,7 @@ jobs:
             echo "Issue #${ISSUE_NUMBER} har ikke Beslutning-label — afslutter"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.check-label.outputs.has_label == 'true'
 
       - name: Generate decision log entry
@@ -53,7 +53,6 @@ jobs:
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="beslutning/${ISSUE_NUMBER}"
           git config user.name "beslutningslog"
@@ -62,6 +61,7 @@ jobs:
           git add DECISION_LOG.md
           git commit -m "BDR-${ISSUE_NUMBER}: ${ISSUE_TITLE}"
           git push origin "$BRANCH"
-          gh pr create \
-            --title "BDR-${ISSUE_NUMBER}: ${ISSUE_TITLE}" \
-            --body "Tilføjer beslutning #${ISSUE_NUMBER} til beslutningsloggen."
+          curl -s -X POST "${{ github.api_url }}/repos/${{ github.repository }}/pulls" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"BDR-${ISSUE_NUMBER}: ${ISSUE_TITLE}\",\"head\":\"${BRANCH}\",\"base\":\"${GITHUB_BASE_REF:-main}\",\"body\":\"Tilføjer beslutning #${ISSUE_NUMBER} til beslutningsloggen.\"}" || true
