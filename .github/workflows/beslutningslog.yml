@@ -4,7 +4,6 @@ on:
     types: [closed]
 
 permissions:
-  issues: write
   contents: write
   pull-requests: write
 
@@ -12,21 +11,6 @@ jobs:
   beslutning:
     runs-on: ubuntu-latest
     steps:
-      - name: Sikrer at Beslutning-label findes i repoet og på issue
-        env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "${{ github.api_url }}/repos/${{ github.repository }}/labels" \
-            -d '{"name":"Beslutning","color":"0e8a16"}' || true
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "${{ github.api_url }}/repos/${{ github.repository }}/issues/${ISSUE_NUMBER}/labels" \
-            -d '{"labels":["Beslutning"]}' || true
-
       - name: Tjek om issue har Beslutning-label
         id: check-label
         env:
